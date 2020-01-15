@@ -26,6 +26,25 @@ def download_txt(url, filename, folder='books/'):
     return path
 
 
+def download_img(url, folder='images/'):
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+
+    response = requests.get(url, allow_redirects=False)
+    response.raise_for_status()
+
+    if response.status_code != 200:
+        raise BookNotExist
+
+    filename = sanitize_filename(url.split('/')[-1])
+
+    path = os.path.join(folder, filename)
+    with open(path, 'wb') as file:
+        file.write(response.content)
+
+    return path
+
+
 def get_title_and_author(url):
     response = requests.get(url, allow_redirects=False)
     response.raise_for_status()
@@ -55,23 +74,18 @@ def get_book_image_link(url):
     return urljoin('http://tululu.org', img_link)
 
 
-def download_img(url, folder='images/'):
-    if not os.path.exists(folder):
-        os.makedirs(folder)
-
+def get_book_comments(url):
     response = requests.get(url, allow_redirects=False)
     response.raise_for_status()
 
     if response.status_code != 200:
         raise BookNotExist
 
-    filename = sanitize_filename(url.split('/')[-1])
-    path = os.path.join(folder, filename)
+    soup = BeautifulSoup(response.text, 'lxml')
 
-    with open(path, 'wb') as file:
-        file.write(response.content)
+    comments = [comment.find('span', class_='black').text for comment in soup.find_all('div', class_='texts')]
 
-    return path
+    return comments
 
 
 if __name__ == '__main__':
@@ -80,8 +94,9 @@ if __name__ == '__main__':
 
     for id in range(1, 11):
         with suppress(BookNotExist):
-            title, author = get_title_and_author(f'{info_url}{id}/')
-            img_link = get_book_image_link(f"{info_url}{id}/")
+            title = get_title_and_author(f'{info_url}{id}/')[0]
+            comments = get_book_comments(f'{info_url}{id}/')
 
-            download_img(img_link)
-
+            print(title)
+            print(comments)
+            print('*' * 5)
