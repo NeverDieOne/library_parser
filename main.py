@@ -5,13 +5,19 @@ from pathvalidate import sanitize_filename
 from exceptions import BookNotExist
 from contextlib import suppress
 from urllib.parse import urljoin
+import parse_tululu_category
+import json
+import argparse
+
+DOWNLOAD_URL = 'http://tululu.org/txt.php?id='
+INFO_URL = 'http://tululu.org/b'
 
 
-def download_txt(url, filename, folder='books/'):
+def download_txt(book_id, filename, folder='books/'):
     if not os.path.exists(folder):
         os.makedirs(folder)
 
-    response = requests.get(url, allow_redirects=False)
+    response = requests.get(f'{DOWNLOAD_URL}{book_id}', allow_redirects=False)
     response.raise_for_status()
 
     if response.status_code != 200:
@@ -26,17 +32,19 @@ def download_txt(url, filename, folder='books/'):
     return path
 
 
-def download_img(url, folder='images/'):
+def download_img(book_id, folder='images/'):
     if not os.path.exists(folder):
         os.makedirs(folder)
 
-    response = requests.get(url, allow_redirects=False)
+    image_link = get_book_image_link(book_id)
+
+    response = requests.get(image_link, allow_redirects=False)
     response.raise_for_status()
 
     if response.status_code != 200:
         raise BookNotExist
 
-    filename = sanitize_filename(url.split('/')[-1])
+    filename = sanitize_filename(image_link.split('/')[-1])
 
     path = os.path.join(folder, filename)
     with open(path, 'wb') as file:
@@ -45,8 +53,8 @@ def download_img(url, folder='images/'):
     return path
 
 
-def get_title_and_author(url):
-    response = requests.get(url, allow_redirects=False)
+def get_title_and_author(book_id):
+    response = requests.get(f'{INFO_URL}{book_id}/', allow_redirects=False)
     response.raise_for_status()
 
     if response.status_code != 200:
@@ -54,7 +62,7 @@ def get_title_and_author(url):
 
     soup = BeautifulSoup(response.text, 'lxml')
 
-    title_and_author = soup.find('h1').text.split('::')
+    title_and_author = soup.select_one('h1').text.split('::')
 
     title = title_and_author[0].strip()
     author = title_and_author[1].strip()
@@ -62,20 +70,20 @@ def get_title_and_author(url):
     return title, author
 
 
-def get_book_image_link(url):
-    response = requests.get(url, allow_redirects=False)
+def get_book_image_link(book_id):
+    response = requests.get(f'{INFO_URL}{book_id}/', allow_redirects=False)
     response.raise_for_status()
 
     if response.status_code != 200:
         raise BookNotExist
 
     soup = BeautifulSoup(response.text, 'lxml')
-    img_link = soup.find('div', class_='bookimage').find('img')['src']
+    img_link = soup.select_one('div.bookimage img')['src']
     return urljoin('http://tululu.org', img_link)
 
 
-def get_book_comments(url):
-    response = requests.get(url, allow_redirects=False)
+def get_book_comments(book_id):
+    response = requests.get(f'{INFO_URL}{book_id}/', allow_redirects=False)
     response.raise_for_status()
 
     if response.status_code != 200:
@@ -83,20 +91,57 @@ def get_book_comments(url):
 
     soup = BeautifulSoup(response.text, 'lxml')
 
-    comments = [comment.find('span', class_='black').text for comment in soup.find_all('div', class_='texts')]
+    comments = [comment.select_one('span.black').text for comment in soup.select('div.texts')]
 
     return comments
 
 
-if __name__ == '__main__':
-    download_url = 'http://tululu.org/txt.php?id='  # Добавить {id}
-    info_url = 'http://tululu.org/b'  # Добавить {id}
+def get_genre(book_id):
+    response = requests.get(f'{INFO_URL}{book_id}/', allow_redirects=False)
+    response.raise_for_status()
 
-    for id in range(1, 11):
+    if response.status_code != 200:
+        raise BookNotExist
+
+    soup = BeautifulSoup(response.text, 'lxml')
+
+    genre = soup.select_one('span.d_book a').text
+    return genre
+
+
+def get_books(start_page=None, end_page=None):
+    if start_page > end_page:
+        return None
+
+    books = []
+    books_ids = parse_tululu_category.get_ids(start_page, end_page)
+    for book_id in books_ids:
         with suppress(BookNotExist):
-            title = get_title_and_author(f'{info_url}{id}/')[0]
-            comments = get_book_comments(f'{info_url}{id}/')
+            title, author = get_title_and_author(book_id)
+            book = {
+                'title': title,
+                'author': author,
+                'img_src': download_img(book_id),
+                'book_path': download_txt(book_id, title),
+                'comments': get_book_comments(book_id)
+            }
 
-            print(title)
-            print(comments)
-            print('*' * 5)
+            books.append(book)
+
+    return books
+
+
+def make_json(filename, obj):
+    with open(f'{filename}.json', 'w') as file:
+        json.dump(obj, file)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Парсер библиотеки tululu.org')
+    parser.add_argument('--start_page', help='Номер страницы, с которой начинаем скачивание', type=int)
+    parser.add_argument('--end_page', help='Номер страницы, на которой заканчиваем скачивание', type=int)
+    parser.add_argument('--filename', help='Имя файла, в который сформировать json')
+    args = parser.parse_args()
+
+    books = get_books(args.start_page or 1, args.end_page)
+    make_json(args.filename or 'books', books)
