@@ -110,9 +110,6 @@ def get_genre(book_id):
 
 
 def get_books(start_page=None, end_page=None):
-    if start_page > end_page:
-        return None
-
     books = []
     books_ids = parse_tululu_category.get_ids(start_page, end_page)
     for book_id in books_ids:
@@ -143,5 +140,12 @@ if __name__ == '__main__':
     parser.add_argument('--filename', default='books.json', help='Имя файла, в который сформировать json')
     args = parser.parse_args()
 
-    books = get_books(args.start_page)
-    make_json(args.filename, books)
+    if all([
+        args.start_page > args.end_page,
+        args.start_page > 0,
+        args.end_page > 0
+    ]):
+        books = get_books(args.start_page)
+        make_json(args.filename, books)
+    else:
+        print('Что-то пошло не так, проверьте корректность вводимых данных')
