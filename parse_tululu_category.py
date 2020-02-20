@@ -8,7 +8,8 @@ def get_ids(start_page=1, end_page=None):
 
     response = requests.get(url, allow_redirects=False)
     response.raise_for_status()
-    if response.status_code != 200:
+
+    if response.status_code == 301:
         return None
 
     if not end_page:
@@ -20,7 +21,7 @@ def get_ids(start_page=1, end_page=None):
         response = requests.get(url, allow_redirects=False)
         response.raise_for_status()
 
-        if response.status_code != 200:
+        if response.status_code == 301:
             break
 
         soup = BeautifulSoup(response.text, 'lxml')

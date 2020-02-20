@@ -20,7 +20,7 @@ def download_txt(book_id, filename, folder='books/'):
     response = requests.get(f'{DOWNLOAD_URL}{book_id}', allow_redirects=False)
     response.raise_for_status()
 
-    if response.status_code != 200:
+    if response.status_code == 301:
         raise BookNotExist
 
     filename = sanitize_filename(filename)
@@ -41,9 +41,6 @@ def download_img(book_id, folder='images/'):
     response = requests.get(image_link, allow_redirects=False)
     response.raise_for_status()
 
-    if response.status_code != 200:
-        raise BookNotExist
-
     filename = sanitize_filename(image_link.split('/')[-1])
 
     path = os.path.join(folder, filename)
@@ -57,7 +54,7 @@ def get_title_and_author(book_id):
     response = requests.get(f'{INFO_URL}{book_id}/', allow_redirects=False)
     response.raise_for_status()
 
-    if response.status_code != 200:
+    if response.status_code == 301:
         raise BookNotExist
 
     soup = BeautifulSoup(response.text, 'lxml')
@@ -74,7 +71,7 @@ def get_book_image_link(book_id):
     response = requests.get(f'{INFO_URL}{book_id}/', allow_redirects=False)
     response.raise_for_status()
 
-    if response.status_code != 200:
+    if response.status_code == 301:
         raise BookNotExist
 
     soup = BeautifulSoup(response.text, 'lxml')
@@ -86,7 +83,7 @@ def get_book_comments(book_id):
     response = requests.get(f'{INFO_URL}{book_id}/', allow_redirects=False)
     response.raise_for_status()
 
-    if response.status_code != 200:
+    if response.status_code == 301:
         raise BookNotExist
 
     soup = BeautifulSoup(response.text, 'lxml')
@@ -100,7 +97,7 @@ def get_genre(book_id):
     response = requests.get(f'{INFO_URL}{book_id}/', allow_redirects=False)
     response.raise_for_status()
 
-    if response.status_code != 200:
+    if response.status_code == 301:
         raise BookNotExist
 
     soup = BeautifulSoup(response.text, 'lxml')
@@ -113,7 +110,7 @@ def get_books(start_page=None, end_page=None):
     books = []
     books_ids = parse_tululu_category.get_ids(start_page, end_page)
     for book_id in books_ids:
-        with suppress(BookNotExist):
+        try:
             title, author = get_title_and_author(book_id)
             book = {
                 'title': title,
@@ -124,6 +121,8 @@ def get_books(start_page=None, end_page=None):
             }
 
             books.append(book)
+        except BookNotExist:
+            print(f'Книга с id "{book_id}" не найдена')
 
     return books
 
@@ -138,14 +137,15 @@ if __name__ == '__main__':
     parser.add_argument('--start_page', default=1, help='Номер страницы, с которой начинаем скачивание', type=int)
     parser.add_argument('--end_page', help='Номер страницы, на которой заканчиваем скачивание', type=int)
     parser.add_argument('--filename', default='books.json', help='Имя файла, в который сформировать json')
+    parser.add_argument('--test', action='store_true', help='Запускает тестовую функцию')
     args = parser.parse_args()
 
     if all([
-        args.start_page > args.end_page,
+        args.start_page < args.end_page,
         args.start_page > 0,
-        args.end_page > 0
+        args.end_page > 0 if args.end_page else True
     ]):
-        books = get_books(args.start_page)
+        books = get_books(args.start_page, args.end_page)
         make_json(args.filename, books)
     else:
         raise InvalidPageNumbers('Указаны некорректные номера страниц')
