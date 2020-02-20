@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 import requests
+from exceptions import InvalidPageNumbers
 
 
 def get_ids(start_page=1, end_page=None):
@@ -9,8 +10,9 @@ def get_ids(start_page=1, end_page=None):
     response = requests.get(url, allow_redirects=False)
     response.raise_for_status()
 
+    # Если стартовая страница указана больше последней (например - max 701, start_page 702)
     if response.status_code == 301:
-        return None
+        raise InvalidPageNumbers('Указаны некорректные номера страниц')
 
     if not end_page:
         soup = BeautifulSoup(response.text, 'lxml')
@@ -20,9 +22,6 @@ def get_ids(start_page=1, end_page=None):
         url = f'http://tululu.org/l55/{page}/'
         response = requests.get(url, allow_redirects=False)
         response.raise_for_status()
-
-        if response.status_code == 301:
-            break
 
         soup = BeautifulSoup(response.text, 'lxml')
         ids += [book.select_one('a')['href'].split('/')[-2].split('b')[-1] for book in soup.select('div.bookimage')]

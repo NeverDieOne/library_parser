@@ -137,7 +137,6 @@ if __name__ == '__main__':
     parser.add_argument('--start_page', default=1, help='Номер страницы, с которой начинаем скачивание', type=int)
     parser.add_argument('--end_page', help='Номер страницы, на которой заканчиваем скачивание', type=int)
     parser.add_argument('--filename', default='books.json', help='Имя файла, в который сформировать json')
-    parser.add_argument('--test', action='store_true', help='Запускает тестовую функцию')
     args = parser.parse_args()
 
     if all([
