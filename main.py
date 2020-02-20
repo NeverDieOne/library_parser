@@ -132,7 +132,7 @@ def get_books(start_page=None, end_page=None):
 
 
 def make_json(filename, obj):
-    with open(f'{filename}.json', 'w') as file:
+    with open(filename, 'w') as file:
         json.dump(obj, file)
 
 
@@ -140,8 +140,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Парсер библиотеки tululu.org')
     parser.add_argument('--start_page', default=1, help='Номер страницы, с которой начинаем скачивание', type=int)
     parser.add_argument('--end_page', help='Номер страницы, на которой заканчиваем скачивание', type=int)
-    parser.add_argument('--filename', default='books', help='Имя файла, в который сформировать json')
+    parser.add_argument('--filename', default='books.json', help='Имя файла, в который сформировать json')
     args = parser.parse_args()
 
     books = get_books(args.start_page)
-    make_json(args.filename)
+    make_json(args.filename, books)
