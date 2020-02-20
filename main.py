@@ -2,7 +2,7 @@ import requests
 import os
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
-from exceptions import BookNotExist
+from exceptions import BookNotExist, InvalidPageNumbers
 from contextlib import suppress
 from urllib.parse import urljoin
 import parse_tululu_category
@@ -148,4 +148,4 @@ if __name__ == '__main__':
         books = get_books(args.start_page)
         make_json(args.filename, books)
     else:
-        print('Что-то пошло не так, проверьте корректность вводимых данных')
+        raise InvalidPageNumbers('Указаны некорректные номера страниц')
