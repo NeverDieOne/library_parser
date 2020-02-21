@@ -14,8 +14,7 @@ INFO_URL = 'http://tululu.org/b'
 
 
 def download_txt(book_id, filename, folder='books/'):
-    if not os.path.exists(folder):
-        os.makedirs(folder)
+    os.makedirs(folder, exist_ok=True)
 
     response = requests.get(f'{DOWNLOAD_URL}{book_id}', allow_redirects=False)
     response.raise_for_status()
@@ -33,8 +32,7 @@ def download_txt(book_id, filename, folder='books/'):
 
 
 def download_img(book_id, folder='images/'):
-    if not os.path.exists(folder):
-        os.makedirs(folder)
+    os.makedirs(folder, exist_ok=True)
 
     image_link = get_book_image_link(book_id)
 
