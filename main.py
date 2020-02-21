@@ -13,6 +13,16 @@ DOWNLOAD_URL = 'http://tululu.org/txt.php?id='
 INFO_URL = 'http://tululu.org/b'
 
 
+def get_response_with_book_data(book_id):
+    response = requests.get(f'{INFO_URL}{book_id}/', allow_redirects=False)
+    response.raise_for_status()
+
+    if response.status_code == 301:
+        raise BookNotExist
+
+    return response
+
+
 def download_txt(book_id, filename, folder='books/'):
     os.makedirs(folder, exist_ok=True)
 
@@ -31,10 +41,10 @@ def download_txt(book_id, filename, folder='books/'):
     return path
 
 
-def download_img(book_id, folder='images/'):
+def download_img(book_data, folder='images/'):
     os.makedirs(folder, exist_ok=True)
 
-    image_link = get_book_image_link(book_id)
+    image_link = get_book_image_link(book_data)
 
     response = requests.get(image_link, allow_redirects=False)
     response.raise_for_status()
@@ -48,14 +58,8 @@ def download_img(book_id, folder='images/'):
     return path
 
 
-def get_title_and_author(book_id):
-    response = requests.get(f'{INFO_URL}{book_id}/', allow_redirects=False)
-    response.raise_for_status()
-
-    if response.status_code == 301:
-        raise BookNotExist
-
-    soup = BeautifulSoup(response.text, 'lxml')
+def get_title_and_author(book_data):
+    soup = BeautifulSoup(book_data.text, 'lxml')
 
     title_and_author = soup.select_one('h1').text.split('::')
 
@@ -65,40 +69,22 @@ def get_title_and_author(book_id):
     return title, author
 
 
-def get_book_image_link(book_id):
-    response = requests.get(f'{INFO_URL}{book_id}/', allow_redirects=False)
-    response.raise_for_status()
-
-    if response.status_code == 301:
-        raise BookNotExist
-
-    soup = BeautifulSoup(response.text, 'lxml')
+def get_book_image_link(book_data):
+    soup = BeautifulSoup(book_data.text, 'lxml')
     img_link = soup.select_one('div.bookimage img')['src']
     return urljoin('http://tululu.org', img_link)
 
 
-def get_book_comments(book_id):
-    response = requests.get(f'{INFO_URL}{book_id}/', allow_redirects=False)
-    response.raise_for_status()
-
-    if response.status_code == 301:
-        raise BookNotExist
-
-    soup = BeautifulSoup(response.text, 'lxml')
+def get_book_comments(book_data):
+    soup = BeautifulSoup(book_data.text, 'lxml')
 
     comments = [comment.select_one('span.black').text for comment in soup.select('div.texts')]
 
     return comments
 
 
-def get_genre(book_id):
-    response = requests.get(f'{INFO_URL}{book_id}/', allow_redirects=False)
-    response.raise_for_status()
-
-    if response.status_code == 301:
-        raise BookNotExist
-
-    soup = BeautifulSoup(response.text, 'lxml')
+def get_genre(book_data):
+    soup = BeautifulSoup(book_data.text, 'lxml')
 
     genre = soup.select_one('span.d_book a').text
     return genre
@@ -109,13 +95,15 @@ def get_books(start_page=None, end_page=None):
     books_ids = parse_tululu_category.get_ids(start_page, end_page)
     for book_id in books_ids:
         try:
-            title, author = get_title_and_author(book_id)
+            book_data = get_response_with_book_data(book_id)
+
+            title, author = get_title_and_author(book_data)
             book = {
                 'title': title,
                 'author': author,
-                'img_src': download_img(book_id),
-                'book_path': download_txt(book_id, title),
-                'comments': get_book_comments(book_id)
+                'img_src': download_img(book_data),
+                'book_path': download_txt(book_data, title),
+                'comments': get_book_comments(book_data)
             }
 
             books.append(book)
