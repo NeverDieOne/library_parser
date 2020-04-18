@@ -103,7 +103,8 @@ def get_books(start_page=None, end_page=None):
                 'author': author,
                 'img_src': download_img(book_data),
                 'book_path': download_txt(book_id, title),
-                'comments': get_book_comments(book_data)
+                'comments': get_book_comments(book_data),
+                'genre': get_genre(book_data)
             }
 
             books.append(book)
