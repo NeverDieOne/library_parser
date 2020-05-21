@@ -29,7 +29,6 @@ def download_txt(book_id, filename, folder='books/'):
 
     response = requests.get(f'{DOWNLOAD_URL}{book_id}', allow_redirects=False)
     response.raise_for_status()
-    print(response)
 
     if response.status_code in BAD_STATUS_CODE:
         raise BookNotExist
