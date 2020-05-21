@@ -11,13 +11,14 @@ import argparse
 
 DOWNLOAD_URL = 'http://tululu.org/txt.php?id='
 INFO_URL = 'http://tululu.org/b'
+BAD_STATUS_CODE = (301, 302)
 
 
 def get_response_with_book_data(book_id):
     response = requests.get(f'{INFO_URL}{book_id}/', allow_redirects=False)
     response.raise_for_status()
 
-    if response.status_code == 301:
+    if response.status_code in BAD_STATUS_CODE:
         raise BookNotExist
 
     return response
@@ -28,8 +29,9 @@ def download_txt(book_id, filename, folder='books/'):
 
     response = requests.get(f'{DOWNLOAD_URL}{book_id}', allow_redirects=False)
     response.raise_for_status()
+    print(response)
 
-    if response.status_code == 301:
+    if response.status_code in BAD_STATUS_CODE:
         raise BookNotExist
 
     filename = sanitize_filename(filename)
